@@ -1,0 +1,8 @@
+# Time in seconds until the player can chat after logging in.
+# Set to -1 to disable.
+delay: 3
+
+
+# How far away they have to be from the location they were in when they logged in to chat.
+# Set to -1 to disable.
+distance: 5

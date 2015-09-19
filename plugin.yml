@@ -1,0 +1,7 @@
+name: AntiBot
+main: ca.thederpygolems.antibot.AntiBot
+author: TheDerpyGolems
+version: 1.0.0
+permissions:
+    antibot.exempt:
+        default: op
