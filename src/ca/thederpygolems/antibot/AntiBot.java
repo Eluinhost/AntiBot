@@ -1,12 +1,15 @@
 package ca.thederpygolems.antibot;
 
-import java.util.*;
-
 import org.bukkit.Location;
-import org.bukkit.event.*;
+import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
 import org.bukkit.event.player.*;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
+
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * @Author Borlea
@@ -16,31 +19,37 @@ import org.bukkit.scheduler.BukkitRunnable;
  */
 public class AntiBot extends JavaPlugin implements Listener{
 
-	private HashMap<UUID, Location> data;
+	private ConcurrentHashMap<UUID, Location> data;
 	private int delay = 3;
-	private double distance = 5;
+	private double distanceSq = 25;
+	private boolean checkingDistance = true;
 
 	@Override
 	public void onEnable(){
 		saveDefaultConfig();
 		delay = getConfig().getInt("delay");
-		distance = getConfig().getDouble("distance");
-		data = new HashMap<>();
+		double distance = getConfig().getDouble("distance");
+		checkingDistance = distance > 0;
+		distanceSq = distance * distance;
+		data = new ConcurrentHashMap<>();
 		getServer().getPluginManager().registerEvents(this, this);
 	}
 
 	@EventHandler
 	public void onLogin(PlayerLoginEvent e){
-		if(!e.getPlayer().hasPermission("antibot.exempt")) {
-			data.put(e.getPlayer().getUniqueId(), e.getPlayer().getLocation());
-			if(delay != -1) {
-				new BukkitRunnable(){
+		if(e.getPlayer().hasPermission("antibot.exempt")) return;
 
-					public void run(){
-						data.remove(e.getPlayer().getUniqueId());
-					}
-				}.runTaskLater(this, delay * 20);
-			}
+		Player player = e.getPlayer();
+		final UUID playerUUID = player.getUniqueId();
+
+		data.put(playerUUID, player.getLocation());
+
+		if (delay != -1) {
+			new BukkitRunnable(){
+				public void run(){
+					data.remove(playerUUID);
+				}
+			}.runTaskLater(this, delay * 20);
 		}
 	}
 
@@ -65,13 +74,16 @@ public class AntiBot extends JavaPlugin implements Listener{
 
 	@EventHandler
 	public void playerMoveEvent(PlayerMoveEvent e){
-		if(distance == -1 || e.getPlayer().hasPermission("antibot.exempt")) {
-			return;
-		}
-		if(data.containsKey(e.getPlayer().getUniqueId())) {
-			if(data.get(e.getPlayer().getUniqueId()).distance(e.getTo()) >= distance) {
-				data.remove(e.getPlayer().getUniqueId());
-			}
+		if(!checkingDistance || e.getPlayer().hasPermission("antibot.exempt")) return;
+
+		UUID uuid = e.getPlayer().getUniqueId();
+
+		Location stored = data.get(uuid);
+
+		if (stored == null) return;
+
+		if (stored.distanceSquared(e.getTo()) >= distanceSq) {
+			data.remove(uuid);
 		}
 	}
 }
